@@ -768,8 +768,16 @@
       }, 2500);
     }
 
-    function handleMenuClick() {
-  showCustomModal("This feature is temporarily unavailable.");
+  function handleMenuClick() {
+  // 1. Show the user notification
+  showCustomModal("The feature is currently unavailable, please come by the counter.");
+
+  // 2. Log event to Google Apps Script
+  const url = `${SCRIPT_URL}?action=logRedDoor&table=${encodeURIComponent(rawTable)}&client=${encodeURIComponent(clientToken)}`;
+  
+  fetch(url, { mode: 'no-cors' }).catch(err => {
+    console.error("Red Door tracking error:", err);
+  });
 }
   </script>
 </body>
