@@ -333,9 +333,10 @@
         <span>Alert Volume</span>
         <span id="volVal">35</span>
       </div>
-      <input type="range" id="volumeSlider" min="0" max="100" value="35" oninput="updateVolume(this.value)" style="width: 100%; margin-bottom: 10px; accent-color: var(--royal-blue);">
-      <button class="btn" style="background: #E2E8F0; color: var(--text-main); margin-top: 0; font-size: 0.85rem; border: none;" onclick="playChime('7min')">Test Sound 🔊</button>
-    </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <input type="range" id="volumeSlider" min="0" max="100" value="35" oninput="updateVolume(this.value)" style="flex: 1; accent-color: var(--royal-blue); margin: 0;">
+        <button class="btn" style="background: #E2E8F0; color: var(--text-main); margin-top: 0; font-size: 0.85rem; border: none; width: auto; padding: 6px 10px; white-space: nowrap;" onclick="playChime('7min')">Test</button>
+      </div>
   </div>
 
   <div id="customModalOverlay" class="custom-modal-overlay">
