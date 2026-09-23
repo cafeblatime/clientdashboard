@@ -528,11 +528,13 @@
 
     // 3E. Main App Initialization & Live Countdown Loop
     try {
-      const urlParams = new URLSearchParams(window.location.search);
-      rawTable = urlParams.get('table') || urlParams.get('Table') || '1';
-      rawTable = rawTable.replace(/[^0-9]/g, '') || '1';
+     // Strict parameter extraction using only what you defined:
+const urlParams = new URLSearchParams(window.location.search);
+rawTable = urlParams.get('table') || urlParams.get('Table') || '1';
+rawTable = rawTable.replace(/[^0-9]/g, '') || '1';
 
-      const sessionId = urlParams.get('client_token') || urlParams.get('t') || urlParams.get('submission_id') || 'latest';
+// Strict Client Token (Column K)
+const clientToken = urlParams.get('client_token') || '';
 
       const endedKey = 'session_ended_' + rawTable + '_' + sessionId;
       if (localStorage.getItem(endedKey) === 'true') {
@@ -665,19 +667,19 @@
       }, 1000);
 
       // 3F. Server Syncing (Background & Active Tab Sync)
-      const syncWithServer = () => {
-        fetch(`${SCRIPT_URL}?action=client`)
-          .then(response => response.json())
-          .then(data => {
-            if (data.status === 'success' && data.tables && data.tables[rawTable]) {
-              const tableData = data.tables[rawTable];
-              if (tableData.status === 'available' && !document.getElementById('renewBtn').style.display) {
-                // Optional state re-alignment can happen here if required
-              }
-            }
-          })
-          .catch(err => console.error("Sync error:", err));
-      };
+     const syncWithServer = () => {
+    fetch(`${SCRIPT_URL}?action=client&table=${encodeURIComponent(rawTable)}&client_token=${encodeURIComponent(clientToken)}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'success' && data.tables && data.tables[rawTable]) {
+          const tableData = data.tables[rawTable];
+          if (tableData.status === 'available' && !document.getElementById('renewBtn').style.display) {
+            // Optional state re-alignment can happen here if required
+          }
+        }
+      })
+      .catch(err => console.error("Sync error:", err));
+  };
 
       // Poll every 10 seconds for tighter synchronization
       setInterval(syncWithServer, 10000);
