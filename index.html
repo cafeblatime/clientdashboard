@@ -498,7 +498,7 @@
       rawTable = urlParams.get('table') || urlParams.get('Table') || '1';
       rawTable = rawTable.replace(/[^0-9]/g, '') || '1';
 
-      const sessionId = urlParams.get('t') || urlParams.get('submission_id') || 'latest';
+      const sessionId = urlParams.get('client_token') || urlParams.get('t') || urlParams.get('submission_id') || 'latest';
 
       const endedKey = 'session_ended_' + rawTable + '_' + sessionId;
       if (localStorage.getItem(endedKey) === 'true') {
@@ -675,7 +675,7 @@
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
           const urlParams = new URLSearchParams(window.location.search);
-          const sessionId = urlParams.get('t') || urlParams.get('submission_id') || 'latest';
+          const sessionId = urlParams.get('client_token') || urlParams.get('t') || urlParams.get('submission_id') || 'latest';
           
           const tokenVal = 'TKN_' + Math.random().toString(36).substring(2, 10) + Date.now();
 
@@ -728,7 +728,7 @@
 
       var tableNum = localStorage.getItem('activeTable') || rawTable;
       const urlParams = new URLSearchParams(window.location.search);
-      const sessionId = urlParams.get('t') || urlParams.get('submission_id') || 'latest';
+      const sessionId = urlParams.get('client_token') || urlParams.get('t') || urlParams.get('submission_id') || 'latest';
       let localUserId = localStorage.getItem('focus_user_id') || '';
 
       if (timerInterval) clearInterval(timerInterval);
@@ -773,7 +773,8 @@
   showCustomModal("The feature is currently unavailable, please order by the counter.");
 
   // 2. Log event to Google Apps Script
-  const url = `${SCRIPT_URL}?action=logRedDoor&table=${encodeURIComponent(rawTable)}&client=${encodeURIComponent(clientToken)}`;
+  let localUserId = localStorage.getItem('focus_user_id') || '';
+  const url = `${SCRIPT_URL}?action=logRedDoor&table=${encodeURIComponent(rawTable)}&client=${encodeURIComponent(localUserId)}`;
   
   fetch(url, { mode: 'no-cors' }).catch(err => {
     console.error("Red Door tracking error:", err);
