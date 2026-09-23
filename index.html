@@ -574,8 +574,8 @@
       const storageKey = 'session_start_table_' + rawTable + '_' + sessionId;
       let startTime = localStorage.getItem(storageKey);
 
-      const BUFFER_DURATION_MS = 2 * 60 * 1000;
-      const MAIN_DURATION_MS = 45 * 60 * 1000;
+      const BUFFER_DURATION_MS = 0 * 60 * 1000;
+      const MAIN_DURATION_MS = 1 * 60 * 1000;
       const TOTAL_DURATION_MS = BUFFER_DURATION_MS + MAIN_DURATION_MS;
 
       if (!startTime) {
