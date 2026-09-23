@@ -534,10 +534,11 @@
     rawTable = rawTable.replace(/[^0-9]/g, '') || '1';
 
     // Strict Client Token (Column K)
+  // Strict Client Token (Column K)
     const clientToken = urlParams.get('client_token') || '';
     const sessionId = clientToken || urlParams.get('t') || urlParams.get('submission_id') || 'latest';
 
-      const endedKey = 'session_ended_' + rawTable + '_' + (clientToken || 'default');
+    const endedKey = 'session_ended_' + rawTable + '_' + sessionId;
       if (localStorage.getItem(endedKey) === 'true') {
         document.getElementById('appCard').innerHTML = `
           <div style="font-size: 1.4rem; font-weight: bold; margin-bottom: 12px; color: var(--royal-blue);">Session Ended</div>
