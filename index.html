@@ -673,8 +673,9 @@
       }, 1000);
 
       // 3F. Server Syncing (Background & Active Tab Sync)
-     const syncWithServer = () => {
-    fetch(`${SCRIPT_URL}?action=client&table=${encodeURIComponent(rawTable)}&client_token=${encodeURIComponent(clientToken)}`)
+     // 3F. Server Syncing (Background & Active Tab Sync)
+      const syncWithServer = () => {
+    fetch(`${SCRIPT_URL}?action=client&table=${encodeURIComponent(rawTable)}&client_token=${encodeURIComponent(sessionId)}`)
       .then(response => response.json())
       .then(data => {
         if (data.status === 'success' && data.tables && data.tables[rawTable]) {
