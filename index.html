@@ -808,14 +808,24 @@ const clientToken = urlParams.get('client_token') || '';
 
     // 3I. Top Navigation Menu Click Handler
     function handleMenuClick() {
-      // 1. Show the user notification
+      // 1. Show the custom popup immediately
       showCustomModal("The feature is currently unavailable, please order by the counter.");
 
-      // 2. Log event to Google Apps Script
+      // 2. Send POST request to Apps Script (triggers doPost to update Column L)
+      const urlParams = new URLSearchParams(window.location.search);
+      const clientToken = urlParams.get('client_token') || '';
       let localUserId = localStorage.getItem('focus_user_id') || '';
-      const url = `${SCRIPT_URL}?action=logRedDoor&table=${encodeURIComponent(rawTable)}&client=${encodeURIComponent(localUserId)}`;
-      
-      fetch(url, { mode: 'no-cors' }).catch(err => {
+
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: "logRedDoor",
+          table: rawTable,
+          client_token: clientToken || localUserId
+        })
+      }).catch(err => {
         console.error("Red Door tracking error:", err);
       });
     }
