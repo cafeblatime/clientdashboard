@@ -621,7 +621,7 @@ const clientToken = urlParams.get('client_token') || '';
           let bSecs = bufferSecs % 60;
 
           bufferTimerEl.innerText = `${bMins < 10 ? '0' : ''}${bMins}:${bSecs < 10 ? '0' : ''}${bSecs}`;
-          mainTimerEl.innerText = "45:00";
+          mainTimerEl.innerText = "45:00"; 
 
           if (totalSecRemaining > 2700) {
             bufferSection.className = 'timer-section tint-buffer-active-box';
@@ -638,7 +638,8 @@ const clientToken = urlParams.get('client_token') || '';
           let mMins = Math.floor(mainSecs / 60);
           let mSecs = mainSecs % 60;
 
-          mainTimerEl.innerText = `${mMins}:${mSecs < 10 ? '0' : ''}${mSecs}`;
+          // FIXED: Added double-digit formatting for main timer minutes
+          mainTimerEl.innerText = `${mMins < 10 ? '0' : ''}${mMins}:${mSecs < 10 ? '0' : ''}${mSecs}`;
 
           if (totalSecRemaining <= 2700) {
             mainTimerSection.className = 'timer-section tint-focus-active-box';
