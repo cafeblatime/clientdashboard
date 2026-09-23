@@ -807,17 +807,15 @@ const clientToken = urlParams.get('client_token') || '';
     }
 
     // 3I. Top Navigation Menu Click Handler
-    function handleMenuClick() {
-      // 1. Show the user notification
-      showCustomModal("The feature is currently unavailable, please order by the counter.");
+   async function handleMenuClick() {
+  showCustomModal("The feature is currently unavailable, please order by the counter.");
 
-      // 2. Log event to Google Apps Script
-      let localUserId = localStorage.getItem('focus_user_id') || '';
-      const url = `${SCRIPT_URL}?action=logRedDoor&table=${encodeURIComponent(rawTable)}&client=${encodeURIComponent(localUserId)}`;
-      
-      fetch(url, { mode: 'no-cors' }).catch(err => {
-        console.error("Red Door tracking error:", err);
-      });
+  let localUserId = localStorage.getItem('focus_user_id') || '';
+  const url = `${SCRIPT_URL}?action=logRedDoor&table=${encodeURIComponent(rawTable)}&client=${encodeURIComponent(localUserId)}`;
+
+  // Using 'await' pauses execution here until the network request completes
+  await fetch(url, { mode: 'no-cors' });
+});
     }
   </script>
 </body>
