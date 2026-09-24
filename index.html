@@ -376,6 +376,7 @@
         <input type="range" id="volumeSlider" min="0" max="100" value="35" oninput="updateVolume(this.value)" style="flex: 1; accent-color: var(--royal-blue); margin: 0;">
         <button class="btn" style="background: #E2E8F0; color: var(--text-main); margin-top: 0; font-size: 0.85rem; border: none; width: auto; padding: 6px 10px; white-space: nowrap;" onclick="playChime('7min')">Test</button>
       </div>
+    </div>
   </div>
 
   <!-- 2E. Popups / Modal Dialogs -->
@@ -403,13 +404,28 @@
        Functional code running the timer & actions
        ========================================== -->
   <script>
-    // 3A. Config & Global Variables
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby2MY_qM4p18RYNwn0a8DX_FGQMdMNyJ4q6b8TnZSnVscOGiUIIPjh0xRaZFvZleMh0Mw/exec";
+    // 3A. FRONTEND TOKEN & STORAGE MANAGEMENT
+    function setClientToken(token) {
+      const expiry = Date.now() + (20 * 60 * 1000); // 20 minutes
+      const payload = { token: token, expiry: expiry };
+      localStorage.setItem("client_token_data", JSON.stringify(payload));
+    }
 
-    let rawTable = '1';
-    let wakeLock = null;
-    let timerInterval = null;
-    let alertVolume = 0.35;
+    function getClientToken() {
+      const itemStr = localStorage.getItem("client_token_data");
+      if (!itemStr) return null;
+      try {
+        const item = JSON.parse(itemStr);
+        if (Date.now() > item.expiry) {
+          localStorage.removeItem("client_token_data");
+          return null;
+        }
+        return item.token;
+      } catch (e) {
+        localStorage.removeItem("client_token_data");
+        return null;
+      }
+    }
 
     // 3B. Audio & Screen Control Utilities
     function updateVolume(val) {
@@ -528,17 +544,14 @@
 
     // 3E. Main App Initialization & Live Countdown Loop
     try {
-     // Strict parameter extraction using only what you defined:
-    const urlParams = new URLSearchParams(window.location.search);
-    rawTable = urlParams.get('table') || urlParams.get('Table') || '1';
-    rawTable = rawTable.replace(/[^0-9]/g, '') || '1';
+      const urlParams = new URLSearchParams(window.location.search);
+      rawTable = urlParams.get('table') || urlParams.get('Table') || '1';
+      rawTable = rawTable.replace(/[^0-9]/g, '') || '1';
 
-    // Strict Client Token (Column K)
-  // Strict Client Token (Column K)
-    const clientToken = urlParams.get('client_token') || '';
-    const sessionId = clientToken || urlParams.get('t') || urlParams.get('submission_id') || 'latest';
+      const clientToken = urlParams.get('client_token') || getClientToken() || '';
+      const sessionId = clientToken || urlParams.get('t') || urlParams.get('submission_id') || 'latest';
 
-    const endedKey = 'session_ended_' + rawTable + '_' + sessionId;
+      const endedKey = 'session_ended_' + rawTable + '_' + sessionId;
       if (localStorage.getItem(endedKey) === 'true') {
         document.getElementById('appCard').innerHTML = `
           <div style="font-size: 1.4rem; font-weight: bold; margin-bottom: 12px; color: var(--royal-blue);">Session Ended</div>
@@ -643,7 +656,6 @@
           let mMins = Math.floor(mainSecs / 60);
           let mSecs = mainSecs % 60;
 
-          // FIXED: Added double-digit formatting for main timer minutes
           mainTimerEl.innerText = `${mMins < 10 ? '0' : ''}${mMins}:${mSecs < 10 ? '0' : ''}${mSecs}`;
 
           if (totalSecRemaining <= 2700) {
@@ -673,25 +685,22 @@
       }, 1000);
 
       // 3F. Server Syncing (Background & Active Tab Sync)
-     // 3F. Server Syncing (Background & Active Tab Sync)
       const syncWithServer = () => {
-    fetch(`${SCRIPT_URL}?action=client&table=${encodeURIComponent(rawTable)}&client_token=${encodeURIComponent(sessionId)}`)
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === 'success' && data.tables && data.tables[rawTable]) {
-          const tableData = data.tables[rawTable];
-          if (tableData.status === 'available' && !document.getElementById('renewBtn').style.display) {
-            // Optional state re-alignment can happen here if required
-          }
-        }
-      })
-      .catch(err => console.error("Sync error:", err));
-  };
+        fetch(`${SCRIPT_URL}?action=client&table=${encodeURIComponent(rawTable)}&client_token=${encodeURIComponent(sessionId)}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success' && data.tables && data.tables[rawTable]) {
+              const tableData = data.tables[rawTable];
+              if (tableData.status === 'available' && !document.getElementById('renewBtn').style.display) {
+                // Optional state re-alignment
+              }
+            }
+          })
+          .catch(err => console.error("Sync error:", err));
+      };
 
-      // Poll every 10 seconds for tighter synchronization
       setInterval(syncWithServer, 10000);
 
-      // Instant sync the moment the user taps back into the tab or unlocks their phone
       document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === 'visible') {
           syncWithServer();
@@ -792,7 +801,6 @@
       localStorage.removeItem('sessionExpiry');
       localStorage.removeItem('renewal_count_' + rawTable);
 
-      // Bulletproof request implementation using sendBeacon to guarantee delivery before close/refresh
       try {
         const beaconUrl = `${SCRIPT_URL}?action=clear&table=${tableNum}&client=${localUserId}`;
         if (navigator.sendBeacon) {
@@ -815,12 +823,10 @@
 
     // 3I. Top Navigation Menu Click Handler
     function handleMenuClick() {
-      // 1. Show the custom popup immediately
       showCustomModal("The feature is currently unavailable, please order by the counter.");
 
-      // 2. Send POST request to Apps Script (triggers doPost to update Column L)
       const urlParams = new URLSearchParams(window.location.search);
-      const clientToken = urlParams.get('client_token') || '';
+      const clientToken = urlParams.get('client_token') || getClientToken() || '';
       let localUserId = localStorage.getItem('focus_user_id') || '';
 
       fetch(SCRIPT_URL, {
