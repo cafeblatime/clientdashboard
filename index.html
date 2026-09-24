@@ -403,13 +403,38 @@
        Functional code running the timer & actions
        ========================================== -->
   <script>
-    // 3A. Config & Global Variables
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby2MY_qM4p18RYNwn0a8DX_FGQMdMNyJ4q6b8TnZSnVscOGiUIIPjh0xRaZFvZleMh0Mw/exec";
+   // 3A. Config & Global Variables
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby2MY_qM4p18RYNwn0a8DX_FGQMdMNyJ4q6b8TnZSnVscOGiUIIPjh0xRaZFvZleMh0Mw/exec";
 
-    let rawTable = '1';
-    let wakeLock = null;
-    let timerInterval = null;
-    let alertVolume = 0.35;
+  let rawTable = '1';
+  let wakeLock = null;
+  let timerInterval = null;
+  let alertVolume = 0.35;
+
+  // === 1. BROWSER TOKEN EXPIRATION HELPERS ===
+  function setClientToken(token) {
+    if (!token) return;
+    const expiry = Date.now() + (20 * 60 * 1000); // 20 minutes expiration
+    const payload = { token: token, expiry: expiry };
+    localStorage.setItem("client_token_data", JSON.stringify(payload));
+  }
+
+  function getClientToken() {
+    const itemStr = localStorage.getItem("client_token_data");
+    if (!itemStr) return null;
+
+    try {
+      const item = JSON.parse(itemStr);
+      if (Date.now() > item.expiry) {
+        localStorage.removeItem("client_token_data");
+        return null;
+      }
+      return item.token;
+    } catch (e) {
+      localStorage.removeItem("client_token_data");
+      return null;
+    }
+  }
 
     // 3B. Audio & Screen Control Utilities
     function updateVolume(val) {
