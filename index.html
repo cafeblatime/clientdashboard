@@ -366,66 +366,75 @@
     <button id="renewBtn" class="btn btn-renew" style="display: none;" onclick="startRenewal()">Renew Focus Session</button>
     <button id="leaveBtn" class="btn btn-leave" onclick="promptLeaveConfirmation()">I'm Leaving</button>
     
-    <!-- 2D. Alert Volume Control Box -->
-    <div style="background: #FFFFFF; padding: 12px; border-radius: 12px; margin-top: 12px; border: 1px solid var(--border-color);">
-      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">
-        <span>Alert Volume</span>
-        <span id="volVal">35</span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <input type="range" id="volumeSlider" min="0" max="100" value="35" oninput="updateVolume(this.value)" style="flex: 1; accent-color: var(--royal-blue); margin: 0;">
-        <button class="btn" style="background: #E2E8F0; color: var(--text-main); margin-top: 0; font-size: 0.85rem; border: none; width: auto; padding: 6px 10px; white-space: nowrap;" onclick="playChime('7min')">Test</button>
-      </div>
-    </div>
-  </div>
+  <!-- ==========================================
+     2D. Volume & Audio Control
+     ========================================== -->
+<div class="volume-box">
+    <label for="volumeSlider">Alert Volume</label>
+    <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.5">
+</div> <!-- Closes volume-box -->
 
-  <!-- 2E. Popups / Modal Dialogs -->
-  <!-- Info Alert Modal -->
-  <div id="customModalOverlay" class="custom-modal-overlay">
-    <div class="custom-modal">
-      <div id="customModalText" class="custom-modal-text">7 minutes alert confirmed.</div>
-      <button class="custom-modal-btn" onclick="closeCustomModal()">OK</button>
-    </div>
-  </div>
+</div> <!-- Closes #appCard -->
 
-  <!-- Exit Confirmation Modal -->
-  <div id="confirmModalOverlay" class="custom-modal-overlay">
-    <div class="custom-modal">
-      <div class="custom-modal-text" style="color: var(--text-main);">Are you sure you want to end your focus session early?</div>
-      <div class="modal-actions">
-        <button class="custom-modal-btn btn-modal-cancel" onclick="closeConfirmModal()">Cancel</button>
-        <button class="custom-modal-btn btn-modal-confirm" onclick="confirmClearTable()">End Session</button>
-      </div>
+<!-- ==========================================
+     2E. Popups / Modal Dialogs
+     ========================================== -->
+<div id="customModalOverlay" class="modal-overlay hidden">
+    <div class="modal-card">
+        <h3 id="modalTitle">Notice</h3>
+        <p id="modalMessage">Message content goes here...</p>
+        <button id="modalCloseBtn" class="btn btn-primary">OK</button>
     </div>
-  </div>
+</div>
+
+<div id="confirmModalOverlay" class="modal-overlay hidden">
+    <div class="modal-card">
+        <h3 id="confirmModalTitle">Confirm Action</h3>
+        <p id="confirmModalMessage">Are you sure?</p>
+        <div class="modal-actions">
+            <button id="confirmCancelBtn" class="btn btn-secondary">Cancel</button>
+            <button id="confirmOkBtn" class="btn btn-danger">Confirm</button>
+        </div>
+    </div>
+</div>
 
   <!-- ==========================================
        SECTION 3: APPLICATION LOGIC (JAVASCRIPT)
        Functional code running the timer & actions
        ========================================== -->
   <script>
-    // 3A. FRONTEND TOKEN & STORAGE MANAGEMENT
-    function setClientToken(token) {
-      const expiry = Date.now() + (20 * 60 * 1000); // 20 minutes
-      const payload = { token: token, expiry: expiry };
-      localStorage.setItem("client_token_data", JSON.stringify(payload));
-    }
+   // 3A. Config & Global Variables
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby2MY_qM4p18RYNwn0a8DX_FGQMdMNyJ4q6b8TnZSnVscOGiUIIPjh0xRaZFvZleMh0Mw/exec";
 
-    function getClientToken() {
-      const itemStr = localStorage.getItem("client_token_data");
-      if (!itemStr) return null;
-      try {
-        const item = JSON.parse(itemStr);
-        if (Date.now() > item.expiry) {
-          localStorage.removeItem("client_token_data");
-          return null;
-        }
-        return item.token;
-      } catch (e) {
+  let rawTable = '1';
+  let wakeLock = null;
+  let timerInterval = null;
+  let alertVolume = 0.35;
+
+  // === 1. BROWSER TOKEN EXPIRATION HELPERS ===
+  function setClientToken(token) {
+    if (!token) return;
+    const expiry = Date.now() + (20 * 60 * 1000); // 20 minutes expiration
+    const payload = { token: token, expiry: expiry };
+    localStorage.setItem("client_token_data", JSON.stringify(payload));
+  }
+
+  function getClientToken() {
+    const itemStr = localStorage.getItem("client_token_data");
+    if (!itemStr) return null;
+
+    try {
+      const item = JSON.parse(itemStr);
+      if (Date.now() > item.expiry) {
         localStorage.removeItem("client_token_data");
         return null;
       }
+      return item.token;
+    } catch (e) {
+      localStorage.removeItem("client_token_data");
+      return null;
     }
+  }
 
     // 3B. Audio & Screen Control Utilities
     function updateVolume(val) {
@@ -544,11 +553,19 @@
 
     // 3E. Main App Initialization & Live Countdown Loop
     try {
+      // Strict parameter extraction using only what you defined:
       const urlParams = new URLSearchParams(window.location.search);
       rawTable = urlParams.get('table') || urlParams.get('Table') || '1';
       rawTable = rawTable.replace(/[^0-9]/g, '') || '1';
 
-      const clientToken = urlParams.get('client_token') || getClientToken() || '';
+      // Retrieve token from URL OR active 20-minute storage
+      let clientToken = urlParams.get('client_token') || getClientToken() || '';
+      
+      // If a token was provided in the URL, save it with a fresh 20-minute clock
+      if (urlParams.get('client_token')) {
+        setClientToken(clientToken);
+      }
+
       const sessionId = clientToken || urlParams.get('t') || urlParams.get('submission_id') || 'latest';
 
       const endedKey = 'session_ended_' + rawTable + '_' + sessionId;
@@ -683,33 +700,37 @@
           clearInterval(timerInterval);
         }
       }, 1000);
-
-      // 3F. Server Syncing (Background & Active Tab Sync)
-      const syncWithServer = () => {
-        fetch(`${SCRIPT_URL}?action=client&table=${encodeURIComponent(rawTable)}&client_token=${encodeURIComponent(sessionId)}`)
-          .then(response => response.json())
-          .then(data => {
-            if (data.status === 'success' && data.tables && data.tables[rawTable]) {
-              const tableData = data.tables[rawTable];
-              if (tableData.status === 'available' && !document.getElementById('renewBtn').style.display) {
-                // Optional state re-alignment
-              }
-            }
-          })
-          .catch(err => console.error("Sync error:", err));
-      };
-
-      setInterval(syncWithServer, 10000);
-
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === 'visible') {
-          syncWithServer();
-        }
-      });
-
     } catch (err) {
-      console.error("Initialization Error:", err);
+      console.error("Initialization error:", err);
     }
+
+    // 3F. Server Syncing (Background & Active Tab Sync)
+    const syncWithServer = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const activeSessionId = urlParams.get('client_token') || getClientToken() || urlParams.get('t') || urlParams.get('submission_id') || 'latest';
+
+      fetch(`${SCRIPT_URL}?action=client&table=${encodeURIComponent(rawTable)}&client_token=${encodeURIComponent(activeSessionId)}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success' && data.tables && data.tables[rawTable]) {
+            const tableData = data.tables[rawTable];
+            if (tableData.status === 'available' && !document.getElementById('renewBtn').style.display) {
+              // Optional state re-alignment can happen here if required
+            }
+          }
+        })
+        .catch(err => console.error("Sync error:", err));
+    };
+
+    // Poll every 10 seconds for tighter synchronization
+    setInterval(syncWithServer, 10000);
+
+    // Instant sync the moment the user taps back into the tab or unlocks their phone
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === 'visible') {
+        syncWithServer();
+      }
+    });
 
     // 3G. Push Notification Request Function
     async function enablePushNotifications() {
@@ -728,7 +749,7 @@
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
           const urlParams = new URLSearchParams(window.location.search);
-          const sessionId = urlParams.get('client_token') || urlParams.get('t') || urlParams.get('submission_id') || 'latest';
+          const sessionId = urlParams.get('client_token') || getClientToken() || urlParams.get('t') || urlParams.get('submission_id') || 'latest';
           
           const tokenVal = 'TKN_' + Math.random().toString(36).substring(2, 10) + Date.now();
 
@@ -765,7 +786,7 @@
       }
     }
 
-    // 3H. Session End & Renewal Actions
+   // 3H. Session End & Renewal Actions
     function startRenewal() {
       let countKey = 'renewal_count_' + rawTable;
       let renewalCount = parseInt(localStorage.getItem(countKey) || '0', 10) + 1;
@@ -782,7 +803,7 @@
 
       var tableNum = localStorage.getItem('activeTable') || rawTable;
       const urlParams = new URLSearchParams(window.location.search);
-      const sessionId = urlParams.get('client_token') || urlParams.get('t') || urlParams.get('submission_id') || 'latest';
+      const sessionId = urlParams.get('client_token') || getClientToken() || urlParams.get('t') || urlParams.get('submission_id') || 'latest';
       let localUserId = localStorage.getItem('focus_user_id') || '';
 
       if (timerInterval) clearInterval(timerInterval);
@@ -800,7 +821,9 @@
       localStorage.removeItem('activeTable');
       localStorage.removeItem('sessionExpiry');
       localStorage.removeItem('renewal_count_' + rawTable);
+      localStorage.removeItem('client_token_data'); // Deletes 20-min token when leaving
 
+      // Bulletproof request implementation using sendBeacon to guarantee delivery before close/refresh
       try {
         const beaconUrl = `${SCRIPT_URL}?action=clear&table=${tableNum}&client=${localUserId}`;
         if (navigator.sendBeacon) {
@@ -820,11 +843,12 @@
         window.close();
       }, 2500);
     }
-
-    // 3I. Top Navigation Menu Click Handler
+  // 3I. Top Navigation Menu Click Handler
     function handleMenuClick() {
+      // 1. Show the custom popup immediately
       showCustomModal("The feature is currently unavailable, please order by the counter.");
 
+      // 2. Send POST request to Apps Script (triggers doPost to update Column L)
       const urlParams = new URLSearchParams(window.location.search);
       const clientToken = urlParams.get('client_token') || getClientToken() || '';
       let localUserId = localStorage.getItem('focus_user_id') || '';
