@@ -657,32 +657,26 @@
             bufferSection.className = 'timer-section tint-muted';
           }
 
-         if (mainSecs <= 420) {
+          if (mainSecs <= 420) {
             if (!alertPlayed) {
               mainTimerEl.classList.add('warning');
-              
-              // TRIGGER ACTIVATION: Sound plays and token is sent/saved to Column I here
               playChime('7min');
               requestWakeLock();
-
-              // Retrieve cached token and send it to backend tracker
-              const activeTokenVal = localStorage.getItem('pending_token_' + rawTable + '_' + sessionId) || ('TKN_' + Math.random().toString(36).substring(2, 10) + Date.now());
-              
-              fetch(SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  action: "activateReminderToken",
-                  table: rawTable,
-                  token: activeTokenVal,
-                  client_token: sessionId || localUserId
-                })
-              });
-
               alertPlayed = true;
             }
           }
+        } 
+        else {
+          if (!expiredPlayed) {
+            playChime('expired');
+            requestWakeLock();
+            expiredPlayed = true;
+          }
+
+          renderExpiredUI();
+          clearInterval(timerInterval);
+        }
+      }, 1000);
 
       // 3F. Server Syncing (Background & Active Tab Sync)
      // 3F. Server Syncing (Background & Active Tab Sync)
@@ -733,11 +727,8 @@
           const urlParams = new URLSearchParams(window.location.search);
           const sessionId = urlParams.get('client_token') || urlParams.get('t') || urlParams.get('submission_id') || 'latest';
           
-          // Create token and cache it locally until the 7-minute mark trigger
           const tokenVal = 'TKN_' + Math.random().toString(36).substring(2, 10) + Date.now();
-          localStorage.setItem('pending_token_' + rawTable + '_' + sessionId, tokenVal);
 
-          // Initial request sets Column H to "SENT" without putting token into Column I yet
           fetch(SCRIPT_URL, {
             method: 'POST',
             mode: 'no-cors',
@@ -745,6 +736,7 @@
             body: JSON.stringify({
               action: "enableAlert",
               table: rawTable,
+              token: tokenVal,
               statusApproval: "SENT"
             })
           });
@@ -827,12 +819,12 @@
       }, 2500);
     }
 
-  // 3I. Top Navigation Menu Click Handler
+    // 3I. Top Navigation Menu Click Handler
     function handleMenuClick() {
       // 1. Show the custom popup immediately
       showCustomModal("The feature is currently unavailable, please order by the counter.");
 
-      // 2. Send POST request to Apps Script to update Column L to true
+      // 2. Send POST request to Apps Script (triggers doPost to update Column L)
       const urlParams = new URLSearchParams(window.location.search);
       const clientToken = urlParams.get('client_token') || '';
       let localUserId = localStorage.getItem('focus_user_id') || '';
