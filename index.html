@@ -526,7 +526,7 @@
       document.getElementById('leaveBtn').style.display = "block";
     }
 
-   // 3E. Main App Initialization & Live Countdown Loop
+ // 3E. Main App Initialization & Live Countdown Loop
     try {
      // Strict parameter extraction using only what you defined:
     const urlParams = new URLSearchParams(window.location.search);
@@ -534,7 +534,6 @@
     rawTable = rawTable.replace(/[^0-9]/g, '') || '1';
 
     // Strict Client Token (Column K)
-  // Strict Client Token (Column K)
     const clientToken = urlParams.get('client_token') || '';
     const sessionId = clientToken || urlParams.get('t') || urlParams.get('submission_id') || 'latest';
 
@@ -611,6 +610,7 @@
       const mainTimerSection = document.getElementById('mainTimerSection');
       let alertPlayed = false;
       let expiredPlayed = false;
+      let tokenDispatched = false;
 
       timerInterval = setInterval(() => {
         const elapsedMs = Date.now() - startTime;
@@ -649,7 +649,6 @@
           let mMins = Math.floor(mainSecs / 60);
           let mSecs = mainSecs % 60;
 
-          // FIXED: Added double-digit formatting for main timer minutes
           mainTimerEl.innerText = `${mMins < 10 ? '0' : ''}${mMins}:${mSecs < 10 ? '0' : ''}${mSecs}`;
 
           if (totalSecRemaining <= 2700) {
@@ -664,6 +663,25 @@
               requestWakeLock();
               alertPlayed = true;
             }
+
+            // Trigger token dispatch to Column I in Backlog sheet when 7 minutes hit
+            if (!tokenDispatched) {
+              const activeToken = localStorage.getItem('pending_token_table_' + rawTable + '_' + sessionId);
+              if (activeToken) {
+                fetch(SCRIPT_URL, {
+                  method: 'POST',
+                  mode: 'no-cors',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    action: "sendTokenAlert",
+                    table: rawTable,
+                    client_token: sessionId,
+                    token: activeToken
+                  })
+                }).catch(err => console.error("Token dispatch error:", err));
+              }
+              tokenDispatched = true;
+            }
           }
         } 
         else {
@@ -677,6 +695,35 @@
           clearInterval(timerInterval);
         }
       }, 1000);
+
+      // 3F. Server Syncing (Background & Active Tab Sync)
+      const syncWithServer = () => {
+    fetch(`${SCRIPT_URL}?action=client&table=${encodeURIComponent(rawTable)}&client_token=${encodeURIComponent(sessionId)}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'success' && data.tables && data.tables[rawTable]) {
+          const tableData = data.tables[rawTable];
+          if (tableData.status === 'available' && !document.getElementById('renewBtn').style.display) {
+            // Optional state re-alignment can happen here if required
+          }
+        }
+      })
+      .catch(err => console.error("Sync error:", err));
+  };
+
+      // Poll every 10 seconds for tighter synchronization
+      setInterval(syncWithServer, 10000);
+
+      // Instant sync the moment the user taps back into the tab or unlocks their phone
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === 'visible') {
+          syncWithServer();
+        }
+      });
+
+    } catch (err) {
+      console.error("Initialization Error:", err);
+    }
 
       // 3F. Server Syncing (Background & Active Tab Sync)
      // 3F. Server Syncing (Background & Active Tab Sync)
