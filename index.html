@@ -526,7 +526,7 @@
       document.getElementById('leaveBtn').style.display = "block";
     }
 
-    // 3E. Main App Initialization & Live Countdown Loop
+   // 3E. Main App Initialization & Live Countdown Loop
     try {
      // Strict parameter extraction using only what you defined:
     const urlParams = new URLSearchParams(window.location.search);
@@ -615,6 +615,12 @@
       timerInterval = setInterval(() => {
         const elapsedMs = Date.now() - startTime;
         const totalSecRemaining = Math.max(0, Math.floor((TOTAL_DURATION_MS - elapsedMs) / 1000));
+        const notifyBtn = document.getElementById('notifyBtn');
+
+        // Hide 'Enable Expiry Alert' button when remaining time is 7 minutes (420s) or less
+        if (notifyBtn && totalSecRemaining <= 420) {
+          notifyBtn.style.display = 'none';
+        }
 
         if (elapsedMs < BUFFER_DURATION_MS) {
           let remainingBufferMs = BUFFER_DURATION_MS - elapsedMs;
