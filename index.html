@@ -112,7 +112,7 @@
       text-transform: uppercase;
     }
 
-       /* 1E. Timers Layout & State Color Shifts */
+    /* 1E. Timers Layout & State Color Shifts */
     .timers-container {
       display: flex;
       gap: 10px;
@@ -183,18 +183,6 @@
     }
     .timer-section.tint-focus-active-box .timer-label {
       color: #1B5E20 !important;
-    }
-
-    /* Focus box during the last 7 minutes: orange tint */
-    .timer-section.tint-focus-warning-box {
-      background: #FFF3E0;
-      border-color: #FFE0B2;
-    }
-    .timer-section.tint-focus-warning-box .main-timer {
-      color: #E65100 !important;
-    }
-    .timer-section.tint-focus-warning-box .timer-label {
-      color: #B26A00 !important;
     }
 
     .timer-section.tint-muted {
@@ -372,11 +360,11 @@
     </div>
 
     <!-- 2C. Control Buttons & Status Text -->
-   <!-- <button id="notifyBtn" class="btn" onclick="enablePushNotifications()">Enable Expiry Alert</button>
+    <button id="notifyBtn" class="btn" onclick="enablePushNotifications()">Enable Expiry Alert</button>
     <div id="statusText" class="status"></div>
 
     <button id="renewBtn" class="btn btn-renew" style="display: none;" onclick="startRenewal()">Renew Focus Session</button>
-    <button id="leaveBtn" class="btn btn-leave" onclick="promptLeaveConfirmation()">I'm Leaving</button> -->
+    <button id="leaveBtn" class="btn btn-leave" onclick="promptLeaveConfirmation()">I'm Leaving</button>
     
     <!-- 2D. Alert Volume Control Box -->
    <!-- <div style="background: #FFFFFF; padding: 12px; border-radius: 12px; margin-top: 12px; border: 1px solid var(--border-color);">
@@ -538,7 +526,7 @@
       document.getElementById('leaveBtn').style.display = "block";
     }
 
-                // 3E. Main App Initialization & Live Countdown Loop
+        // 3E. Main App Initialization & Live Countdown Loop
     try {
      // Strict parameter extraction using only what you defined:
     const urlParams = new URLSearchParams(window.location.search);
@@ -686,11 +674,7 @@
           // FIXED: Added double-digit formatting for main timer minutes
           mainTimerEl.innerText = `${mMins < 10 ? '0' : ''}${mMins}:${mSecs < 10 ? '0' : ''}${mSecs}`;
 
-          // Focus box tint: orange in the last 7 minutes, green before that
-          if (mainSecs <= 420) {
-            mainTimerSection.className = 'timer-section tint-focus-warning-box';
-            bufferSection.className = 'timer-section tint-muted';
-          } else if (totalSecRemaining <= 2700) {
+          if (totalSecRemaining <= 2700) {
             mainTimerSection.className = 'timer-section tint-focus-active-box';
             bufferSection.className = 'timer-section tint-muted';
           }
@@ -716,35 +700,6 @@
           clearInterval(timerInterval);
         }
       }, 1000);
-
-     // 3F. Server Syncing (Background & Active Tab Sync)
-      const syncWithServer = () => {
-    fetch(`${SCRIPT_URL}?action=client&table=${encodeURIComponent(rawTable)}&client_token=${encodeURIComponent(sessionId)}`)
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === 'success' && data.tables && data.tables[rawTable]) {
-          const tableData = data.tables[rawTable];
-          if (tableData.status === 'available' && !document.getElementById('renewBtn').style.display) {
-            // Optional state re-alignment can happen here if required
-          }
-        }
-      })
-      .catch(err => console.error("Sync error:", err));
-  };
-
-      // Poll every 10 seconds for tighter synchronization
-      setInterval(syncWithServer, 10000);
-
-      // Instant sync the moment the user taps back into the tab or unlocks their phone
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === 'visible') {
-          syncWithServer();
-        }
-      });
-
-    } catch (err) {
-      console.error("Initialization Error:", err);
-    }
 
      // 3F. Server Syncing (Background & Active Tab Sync)
       const syncWithServer = () => {
