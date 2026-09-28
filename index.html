@@ -367,16 +367,16 @@
     <button id="leaveBtn" class="btn btn-leave" onclick="promptLeaveConfirmation()">I'm Leaving</button>
     
     <!-- 2D. Alert Volume Control Box -->
-    <div style="background: #FFFFFF; padding: 12px; border-radius: 12px; margin-top: 12px; border: 1px solid var(--border-color);">
+   <!-- <div style="background: #FFFFFF; padding: 12px; border-radius: 12px; margin-top: 12px; border: 1px solid var(--border-color);">
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">
         <span>Alert Volume</span>
         <span id="volVal">35</span>
       </div>
       <div style="display: flex; align-items: center; gap: 10px;">
-        <input type="range" id="volumeSlider" min="0" max="100" value="35" oninput="updateVolume(this.value)" style="flex: 1; accent-color: var(--royal-blue); margin: 0;">
+        <input type="range" id="volumeSlider" min="0" max="100" value="15" oninput="updateVolume(this.value)" style="flex: 1; accent-color: var(--royal-blue); margin: 0;">
         <button class="btn" style="background: #E2E8F0; color: var(--text-main); margin-top: 0; font-size: 0.85rem; border: none; width: auto; padding: 6px 10px; white-space: nowrap;" onclick="playChime('7min')">Test</button>
       </div>
-  </div>
+  </div> -->
 
   <!-- 2E. Popups / Modal Dialogs -->
   <!-- Info Alert Modal -->
@@ -409,7 +409,7 @@
     let rawTable = '1';
     let wakeLock = null;
     let timerInterval = null;
-    let alertVolume = 0.35;
+    let alertVolume = 0.15;
 
     // 3B. Audio & Screen Control Utilities
     function updateVolume(val) {
