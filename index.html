@@ -686,19 +686,19 @@
           // FIXED: Added double-digit formatting for main timer minutes
           mainTimerEl.innerText = `${mMins < 10 ? '0' : ''}${mMins}:${mSecs < 10 ? '0' : ''}${mSecs}`;
 
-          if (totalSecRemaining <= 2700) {
-            mainTimerSection.className = 'timer-section tint-focus-active-box';
-            bufferSection.className = 'timer-section tint-muted';
-          }
-
+         // If 7 minutes (420s) or less remain in Focus mode, switch tint from Green to Orange
           if (mainSecs <= 420) {
+            mainTimerSection.className = 'timer-section tint-focus-warning-box';
+            bufferSection.className = 'timer-section tint-muted';
             if (!alertPlayed) {
-              mainTimerEl.classList.add('warning');
               playChime('7min');
               requestWakeLock();
               alertPlayed = true;
               sendReminderTokenCopy();
             }
+          } else if (totalSecRemaining <= 2700) {
+            mainTimerSection.className = 'timer-section tint-focus-active-box';
+            bufferSection.className = 'timer-section tint-muted';
           }
         } 
         else {
