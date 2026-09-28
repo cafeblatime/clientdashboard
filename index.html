@@ -830,9 +830,9 @@
       localStorage.removeItem('sessionExpiry');
       localStorage.removeItem('renewal_count_' + rawTable);
 
-      // Bulletproof request implementation using sendBeacon to guarantee delivery before close/refresh
+      // Bulletproof request implementation sending action=clear with table & client_token
       try {
-        const beaconUrl = `${SCRIPT_URL}?action=clear&table=${tableNum}&client=${localUserId}`;
+        const beaconUrl = `${SCRIPT_URL}?action=clear&table=${encodeURIComponent(tableNum)}&client_token=${encodeURIComponent(sessionId)}&client=${encodeURIComponent(localUserId)}`;
         if (navigator.sendBeacon) {
           navigator.sendBeacon(beaconUrl);
         } else {
