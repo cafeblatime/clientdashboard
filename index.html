@@ -331,7 +331,7 @@
 </head>
 <body>
 
-  <!-- ==========================================
+ <!-- ==========================================
        SECTION 2: USER INTERFACE (HTML CONTENT)
        On-screen elements visible to the user
        ========================================== -->
@@ -360,14 +360,14 @@
     </div>
 
     <!-- 2C. Control Buttons & Status Text -->
-    <button id="notifyBtn" class="btn" onclick="enablePushNotifications()">Enable Expiry Alert</button>
+    <button id="notifyBtn" class="btn" style="display: none;" onclick="enablePushNotifications()">Enable Expiry Alert</button>
     <div id="statusText" class="status"></div>
 
     <button id="renewBtn" class="btn btn-renew" style="display: none;" onclick="startRenewal()">Renew Focus Session</button>
     <button id="leaveBtn" class="btn btn-leave" onclick="promptLeaveConfirmation()">I'm Leaving</button>
     
-    <!-- 2D. Alert Volume Control Box -->
-    <div style="background: #FFFFFF; padding: 12px; border-radius: 12px; margin-top: 12px; border: 1px solid var(--border-color);">
+    <!-- 2D. Alert Volume Control Box (Hidden) -->
+    <div style="display: none; background: #FFFFFF; padding: 12px; border-radius: 12px; margin-top: 12px; border: 1px solid var(--border-color);">
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px;">
         <span>Alert Volume</span>
         <span id="volVal">35</span>
@@ -376,6 +376,7 @@
         <input type="range" id="volumeSlider" min="0" max="100" value="35" oninput="updateVolume(this.value)" style="flex: 1; accent-color: var(--royal-blue); margin: 0;">
         <button class="btn" style="background: #E2E8F0; color: var(--text-main); margin-top: 0; font-size: 0.85rem; border: none; width: auto; padding: 6px 10px; white-space: nowrap;" onclick="playChime('7min')">Test</button>
       </div>
+    </div>
   </div>
 
   <!-- 2E. Popups / Modal Dialogs -->
@@ -411,7 +412,7 @@
     let timerInterval = null;
     let alertVolume = 0.35;
 
-    // 3B. Audio & Screen Control Utilities
+   // 3B. Audio & Screen Control Utilities
     function updateVolume(val) {
       document.getElementById('volVal').innerText = val;
       const slider = document.getElementById('volumeSlider');
@@ -436,9 +437,9 @@
 
         if ('vibrate' in navigator) {
           if (type === '7min') {
-            navigator.vibrate([200, 100, 200]);
+            navigator.vibrate([150, 80, 150]);
           } else if (type === 'expired') {
-            navigator.vibrate([400, 100, 400, 100, 400]);
+            navigator.vibrate([300, 100, 300, 100, 300]);
           }
         }
 
@@ -449,9 +450,10 @@
           osc.type = 'triangle';
           osc.frequency.value = freq;
 
-          const effectiveGain = alertVolume * 0.9;
+          // Soft volume level (capped at 0.2 max gain)
+          const effectiveGain = Math.min(alertVolume, 0.2);
           gain.gain.setValueAtTime(effectiveGain, ctx.currentTime + startTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startTime + duration);
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + startTime + duration);
 
           osc.connect(gain);
           gain.connect(ctx.destination);
@@ -461,17 +463,15 @@
         }
 
         if (type === '7min') {
-          tone(880, 0, 0.3);
-          tone(1046.50, 0.35, 0.6);
-          tone(880, 1.0, 0.3);
-          tone(1046.50, 1.35, 0.6);
+          // Soft 2-note chime (~0.6s total length)
+          tone(523.25, 0.0, 0.25); // C5
+          tone(659.25, 0.25, 0.35); // E5
         } else if (type === 'expired') {
-          const pattern = [0, 0.8, 1.6];
-          pattern.forEach(offset => {
-            tone(1046.50, offset + 0.0, 0.2);
-            tone(1046.50, offset + 0.25, 0.2);
-            tone(1318.51, offset + 0.5, 0.4);
-          });
+          // Soft end-of-session melody (~1.2s total length - double 7min duration)
+          tone(523.25, 0.0, 0.25);  // C5
+          tone(659.25, 0.25, 0.25); // E5
+          tone(783.99, 0.50, 0.25); // G5
+          tone(1046.50, 0.75, 0.45); // C6
         }
       } catch (e) {
         console.log('Audio playback blocked or unsupported', e);
@@ -528,17 +528,16 @@
 
         // 3E. Main App Initialization & Live Countdown Loop
     try {
-     // Strict parameter extraction using only what you defined:
-    const urlParams = new URLSearchParams(window.location.search);
-    rawTable = urlParams.get('table') || urlParams.get('Table') || '1';
-    rawTable = rawTable.replace(/[^0-9]/g, '') || '1';
+      // Strict parameter extraction using only what you defined:
+      const urlParams = new URLSearchParams(window.location.search);
+      rawTable = urlParams.get('table') || urlParams.get('Table') || '1';
+      rawTable = rawTable.replace(/[^0-9]/g, '') || '1';
 
-    // Strict Client Token (Column K)
-  // Strict Client Token (Column K)
-    const clientToken = urlParams.get('client_token') || '';
-    const sessionId = clientToken || urlParams.get('t') || urlParams.get('submission_id') || 'latest';
+      // Strict Client Token (Column K)
+      const clientToken = urlParams.get('client_token') || '';
+      const sessionId = clientToken || urlParams.get('t') || urlParams.get('submission_id') || 'latest';
 
-    const endedKey = 'session_ended_' + rawTable + '_' + sessionId;
+      const endedKey = 'session_ended_' + rawTable + '_' + sessionId;
       if (localStorage.getItem(endedKey) === 'true') {
         document.getElementById('appCard').innerHTML = `
           <div style="font-size: 1.4rem; font-weight: bold; margin-bottom: 12px; color: var(--royal-blue);">Session Ended</div>
@@ -671,7 +670,6 @@
           let mMins = Math.floor(mainSecs / 60);
           let mSecs = mainSecs % 60;
 
-          // FIXED: Added double-digit formatting for main timer minutes
           mainTimerEl.innerText = `${mMins < 10 ? '0' : ''}${mMins}:${mSecs < 10 ? '0' : ''}${mSecs}`;
 
           if (totalSecRemaining <= 2700) {
@@ -682,8 +680,28 @@
           if (mainSecs <= 420) {
             if (!alertPlayed) {
               mainTimerEl.classList.add('warning');
+              
+              // 1. Play soft 2-note chime & trigger vibration
               playChime('7min');
+              
+              // 2. Wake screen
               requestWakeLock();
+              
+              // 3. Display pop-up alert
+              showCustomModal("Session is almost over");
+
+              // 4. Send TRUE to Column H in Backlog sheet automatically
+              const autoAlertKey = 'auto_alert_sent_table_' + rawTable + '_' + sessionId;
+              if (localStorage.getItem(autoAlertKey) !== 'true') {
+                fetch(`${SCRIPT_URL}?action=enableAlert&table=${encodeURIComponent(rawTable)}&client_token=${encodeURIComponent(clientToken || localUserId)}`, {
+                  method: 'GET',
+                  mode: 'no-cors',
+                  keepalive: true
+                })
+                .then(() => localStorage.setItem(autoAlertKey, 'true'))
+                .catch(err => console.error("Auto 7-min reminder error:", err));
+              }
+
               alertPlayed = true;
               sendReminderTokenCopy();
             }
@@ -700,6 +718,35 @@
           clearInterval(timerInterval);
         }
       }, 1000);
+
+      // 3F. Server Syncing (Background & Active Tab Sync)
+      const syncWithServer = () => {
+        fetch(`${SCRIPT_URL}?action=client&table=${encodeURIComponent(rawTable)}&client_token=${encodeURIComponent(sessionId)}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success' && data.tables && data.tables[rawTable]) {
+              const tableData = data.tables[rawTable];
+              if (tableData.status === 'available' && !document.getElementById('renewBtn').style.display) {
+                // Optional state re-alignment can happen here if required
+              }
+            }
+          })
+          .catch(err => console.error("Sync error:", err));
+      };
+
+      // Poll every 10 seconds for tighter synchronization
+      setInterval(syncWithServer, 10000);
+
+      // Instant sync the moment the user taps back into the tab or unlocks their phone
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === 'visible') {
+          syncWithServer();
+        }
+      });
+
+    } catch (err) {
+      console.error("Initialization Error:", err);
+    }
 
      // 3F. Server Syncing (Background & Active Tab Sync)
       const syncWithServer = () => {
@@ -839,7 +886,7 @@
       }, 2500);
     }
 
-        // 3I. Top Navigation Menu Click Handler
+       // 3I. Top Navigation Menu Click Handler
     function handleMenuClick() {
       // 1. Show the custom popup immediately
       showCustomModal("The feature is currently unavailable, please order by the counter.");
