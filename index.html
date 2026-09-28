@@ -526,7 +526,7 @@
       document.getElementById('leaveBtn').style.display = "block";
     }
 
-   // 3E. Main App Initialization & Live Countdown Loop
+        // 3E. Main App Initialization & Live Countdown Loop
     try {
      // Strict parameter extraction using only what you defined:
     const urlParams = new URLSearchParams(window.location.search);
@@ -605,6 +605,28 @@
         }
       }
 
+      // Sends a copy of the reminder token to Backlog column I.
+      // Only runs when the 7-minute chime played on this device, only if the reminder was
+      // activated, and only once per session.
+      const sendReminderTokenCopy = () => {
+        const alertKey = 'alerts_enabled_table_' + rawTable + '_' + sessionId;
+        const tokenKey = 'reminder_token_table_' + rawTable + '_' + sessionId;
+        const sentKey  = 'reminder_token_sent_table_' + rawTable + '_' + sessionId;
+
+        if (localStorage.getItem(alertKey) !== 'true') return;
+        if (localStorage.getItem(sentKey) === 'true') return;
+        const savedToken = localStorage.getItem(tokenKey);
+        if (!savedToken) return;
+
+        fetch(`${SCRIPT_URL}?action=activateReminderToken&table=${encodeURIComponent(rawTable)}&token=${encodeURIComponent(savedToken)}&client_token=${encodeURIComponent(clientToken)}`, {
+          method: 'GET',
+          mode: 'no-cors',
+          keepalive: true
+        })
+        .then(() => localStorage.setItem(sentKey, 'true'))
+        .catch(err => console.error("Reminder token copy error:", err));
+      };
+
       const bufferTimerEl = document.getElementById('bufferTimer');
       const mainTimerEl = document.getElementById('mainTimer');
       const bufferSection = document.getElementById('bufferSection');
@@ -663,6 +685,7 @@
               playChime('7min');
               requestWakeLock();
               alertPlayed = true;
+              sendReminderTokenCopy();
             }
           }
         } 
@@ -678,7 +701,6 @@
         }
       }, 1000);
 
-      // 3F. Server Syncing (Background & Active Tab Sync)
      // 3F. Server Syncing (Background & Active Tab Sync)
       const syncWithServer = () => {
     fetch(`${SCRIPT_URL}?action=client&table=${encodeURIComponent(rawTable)}&client_token=${encodeURIComponent(sessionId)}`)
@@ -708,7 +730,7 @@
       console.error("Initialization Error:", err);
     }
 
-    // 3G. Push Notification Request Function
+      // 3G. Push Notification Request Function
     async function enablePushNotifications() {
       const btn = document.getElementById('notifyBtn');
       const status = document.getElementById('statusText');
@@ -725,21 +747,20 @@
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
           const urlParams = new URLSearchParams(window.location.search);
-          const sessionId = urlParams.get('client_token') || urlParams.get('t') || urlParams.get('submission_id') || 'latest';
+          const clientToken = urlParams.get('client_token') || '';
+          const sessionId = clientToken || urlParams.get('t') || urlParams.get('submission_id') || 'latest';
           
           const tokenVal = 'TKN_' + Math.random().toString(36).substring(2, 10) + Date.now();
 
-          fetch(SCRIPT_URL, {
-            method: 'POST',
+          // Save the reminder token on the phone (used later for the 7-minute copy to column I)
+          localStorage.setItem('reminder_token_table_' + rawTable + '_' + sessionId, tokenVal);
+
+          // Sends TRUE to column H of the newest row for this table + client token
+          fetch(`${SCRIPT_URL}?action=enableAlert&table=${encodeURIComponent(rawTable)}&client_token=${encodeURIComponent(clientToken)}`, {
+            method: 'GET',
             mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: "enableAlert",
-              table: rawTable,
-              token: tokenVal,
-              statusApproval: "SENT"
-            })
-          });
+            keepalive: true
+          }).catch(err => console.error("Reminder tracking error:", err));
 
           localStorage.setItem('alerts_enabled_table_' + rawTable + '_' + sessionId, 'true');
 
@@ -761,7 +782,6 @@
         status.innerText = "Could not enable alerts. Keep tab open for chime.";
       }
     }
-
     // 3H. Session End & Renewal Actions
     function startRenewal() {
       let countKey = 'renewal_count_' + rawTable;
@@ -819,25 +839,20 @@
       }, 2500);
     }
 
-    // 3I. Top Navigation Menu Click Handler
+        // 3I. Top Navigation Menu Click Handler
     function handleMenuClick() {
       // 1. Show the custom popup immediately
       showCustomModal("The feature is currently unavailable, please order by the counter.");
 
-      // 2. Send POST request to Apps Script (triggers doPost to update Column L)
+      // 2. Send GET request to Apps Script (writes TRUE to Column L)
       const urlParams = new URLSearchParams(window.location.search);
       const clientToken = urlParams.get('client_token') || '';
       let localUserId = localStorage.getItem('focus_user_id') || '';
 
-      fetch(SCRIPT_URL, {
-        method: 'POST',
+      fetch(`${SCRIPT_URL}?action=logRedDoor&table=${encodeURIComponent(rawTable)}&client_token=${encodeURIComponent(clientToken || localUserId)}`, {
+        method: 'GET',
         mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: "logRedDoor",
-          table: rawTable,
-          client_token: clientToken || localUserId
-        })
+        keepalive: true
       }).catch(err => {
         console.error("Red Door tracking error:", err);
       });
