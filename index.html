@@ -788,7 +788,8 @@ try {
         status.innerText = "Could not enable alerts. Keep tab open for chime.";
       }
     }
-    // 3H. Session End & Renewal Actions
+   
+   // 3H. Session End & Renewal Actions
     function startRenewal() {
       let countKey = 'renewal_count_' + rawTable;
       let renewalCount = parseInt(localStorage.getItem(countKey) || '0', 10) + 1;
@@ -797,7 +798,10 @@ try {
 
       let evenUneven = (renewalCount % 2 === 0);
 
-      window.location.href = `https://tally.so/r/aQqkWX?table=${rawTable}&even_uneven=${evenUneven}`;
+      const urlParams = new URLSearchParams(window.location.search);
+      const currentClientToken = urlParams.get('client_token') || urlParams.get('t') || urlParams.get('submission_id') || clientToken || '';
+
+      window.location.href = `https://tally.so/r/aQqkWX?table=${rawTable}&even_uneven=${evenUneven}&client_token=${encodeURIComponent(currentClientToken)}`;
     }
 
     async function confirmClearTable() {
