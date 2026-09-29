@@ -575,10 +575,12 @@
             const tableData = data.tables[rawTable];
             if (tableData.userId && sessionId !== 'latest' && tableData.userId !== sessionId) {
               if (tableData.userId !== localUserId) {
-                document.getElementById('appCard').innerHTML = `
-                  <div style="font-size: 1.4rem; font-weight: bold; margin-bottom: 12px; color: var(--accent-red);">Table Already Booked</div>
-                  <p style="color: var(--text-main); font-size: 1rem; margin-bottom: 8px;">This table is already booked by another user.</p>
-                `;
+                // Proposed update for Section 3E:
+                  document.getElementById('appCard').innerHTML = `
+                    <div style="font-size: 1.4rem; font-weight: bold; margin-bottom: 12px; color: var(--accent-red);">Table Already Booked</div>
+                    <p style="color: var(--text-main); font-size: 1.05rem; margin-bottom: 10px; font-weight: 600;">This table is currently occupied.</p>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.4;">Please feel free to find another open table.</p>
+      `;
                 if (timerInterval) clearInterval(timerInterval);
                 return;
               }
