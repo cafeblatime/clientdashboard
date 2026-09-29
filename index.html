@@ -547,7 +547,7 @@
       // -------------------------------
     }
 
-      // ==========================================
+     // ==========================================
 // SECTION 3E: MAIN APP INITIALIZATION & LIVE COUNTDOWN LOOP
 // ==========================================
 const urlParams = new URLSearchParams(window.location.search);
@@ -559,29 +559,40 @@ const clientToken = urlParams.get('client_token') || urlParams.get('t') || urlPa
 const sessionId = clientToken || 'latest';
 
 try {
-  // Check if a 10-minute expiration grace period was active and has now passed in the background
-  const expiryGraceKey = 'expired_grace_until_' + rawTable + '_' + sessionId;
-  const graceUntil = localStorage.getItem(expiryGraceKey);
-  if (graceUntil && Date.now() > parseInt(graceUntil, 10)) {
-    // Automatically trigger session end data cleanup behind the scenes
-    const tableNum = rawTable;
-    localStorage.setItem('session_ended_' + tableNum + '_' + sessionId, 'true');
-    localStorage.removeItem('session_start_table_' + tableNum + '_' + sessionId);
-    localStorage.setItem('force_clear_table_' + tableNum, Date.now());
-    localStorage.removeItem('activeTable');
-    localStorage.removeItem('sessionExpiry');
-    localStorage.removeItem('renewal_count_' + rawTable);
-    localStorage.removeItem(expiryGraceKey);
+  // Read current renewal count at the beginning of setup
+  let renewalCount = localStorage.getItem('renewal_count_' + rawTable) || '0';
 
-    // Ping the server to clear the table
-    try {
-      const beaconUrl = `${SCRIPT_URL}?action=clear&table=${encodeURIComponent(tableNum)}&client_token=${encodeURIComponent(sessionId)}`;
-      if (navigator.sendBeacon) {
-        navigator.sendBeacon(beaconUrl);
-      } else {
-        fetch(beaconUrl, { method: 'GET', mode: 'no-cors', keepalive: true });
-      }
-    } catch (e) {}
+  // Check if user is returning from an active renewal process
+  const isRenewing = localStorage.getItem('renewed_flag_' + rawTable) === 'true';
+  const expiryGraceKey = 'expired_grace_until_' + rawTable + '_' + sessionId;
+
+  if (isRenewing) {
+    // Clear stale state flags from the previous session iteration
+    localStorage.removeItem('session_ended_' + rawTable + '_' + sessionId);
+    localStorage.removeItem(expiryGraceKey);
+    localStorage.removeItem('renewed_flag_' + rawTable);
+  } else {
+    // Check if a 10-minute expiration grace period was active and has now passed
+    const graceUntil = localStorage.getItem(expiryGraceKey);
+    if (graceUntil && Date.now() > parseInt(graceUntil, 10)) {
+      const tableNum = rawTable;
+      localStorage.setItem('session_ended_' + tableNum + '_' + sessionId, 'true');
+      localStorage.removeItem('session_start_table_' + tableNum + '_' + sessionId + '_r' + renewalCount);
+      localStorage.setItem('force_clear_table_' + tableNum, Date.now());
+      localStorage.removeItem('activeTable');
+      localStorage.removeItem('sessionExpiry');
+      localStorage.removeItem('renewal_count_' + rawTable);
+      localStorage.removeItem(expiryGraceKey);
+
+      try {
+        const beaconUrl = `${SCRIPT_URL}?action=clear&table=${encodeURIComponent(tableNum)}&client_token=${encodeURIComponent(sessionId)}`;
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(beaconUrl);
+        } else {
+          fetch(beaconUrl, { method: 'GET', mode: 'no-cors', keepalive: true });
+        }
+      } catch (e) {}
+    }
   }
 
   const endedKey = 'session_ended_' + rawTable + '_' + sessionId;
@@ -607,8 +618,13 @@ try {
     .then(data => {
       if (data.status === 'success' && data.tables && data.tables[rawTable]) {
         const tableData = data.tables[rawTable];
-        if (tableData.userId && sessionId !== 'latest' && tableData.userId !== sessionId) {
-          if (tableData.userId !== localUserId) {
+        
+        // Strict string matching to prevent false positive bookings on rescan
+        const activeUserId = tableData.userId ? tableData.userId.toString().trim() : '';
+        const currentSessionId = sessionId ? sessionId.toString().trim() : '';
+
+        if (activeUserId && currentSessionId !== 'latest' && activeUserId !== currentSessionId) {
+          if (activeUserId !== localUserId) {
             document.getElementById('appCard').innerHTML = `
               <div style="font-size: 1.4rem; font-weight: bold; margin-bottom: 12px; color: var(--accent-red);">Table Already Booked</div>
               <p style="color: var(--text-main); font-size: 1.05rem; margin-bottom: 10px; font-weight: 600;">This table is currently occupied.</p>
@@ -622,8 +638,6 @@ try {
     })
     .catch(err => console.error("User validation error:", err));
 
-  // Include the current renewal count so each renewal gets its own unique storage slot
-  let renewalCount = localStorage.getItem('renewal_count_' + rawTable) || '0';
   const storageKey = 'session_start_table_' + rawTable + '_' + sessionId + '_r' + renewalCount;
   let startTime = localStorage.getItem(storageKey);
 
@@ -826,11 +840,13 @@ try {
     }
    
    // 3H. Session End & Renewal Actions
-    function startRenewal() {
+   function startRenewal() {
       let countKey = 'renewal_count_' + rawTable;
       let renewalCount = parseInt(localStorage.getItem(countKey) || '0', 10) + 1;
 
       localStorage.setItem(countKey, renewalCount);
+      localStorage.setItem('renewed_flag_' + rawTable, 'true'); // Flags that a renewal is in progress
+      localStorage.removeItem('expired_grace_until_' + rawTable + '_' + (clientToken || 'latest')); // Clears prior expiration lockout
 
       let evenUneven = (renewalCount % 2 === 0);
 
@@ -844,7 +860,6 @@ try {
 
       window.location.href = `https://tally.so/r/aQqkWX?table=${rawTable}&even_uneven=${evenUneven}&client_token=${encodeURIComponent(currentClientToken)}`;
     }
-
     async function confirmClearTable() {
       closeConfirmModal();
 
