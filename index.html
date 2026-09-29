@@ -799,7 +799,12 @@ try {
       let evenUneven = (renewalCount % 2 === 0);
 
       const urlParams = new URLSearchParams(window.location.search);
-      const currentClientToken = urlParams.get('client_token') || urlParams.get('t') || urlParams.get('submission_id') || clientToken || '';
+      let currentClientToken = urlParams.get('client_token') || urlParams.get('t') || urlParams.get('submission_id') || clientToken || '';
+
+      // Sanitize token in case it accidentally swallowed trailing query parameters
+      if (currentClientToken) {
+        currentClientToken = currentClientToken.split('&')[0].split('even_uneven')[0];
+      }
 
       window.location.href = `https://tally.so/r/aQqkWX?table=${rawTable}&even_uneven=${evenUneven}&client_token=${encodeURIComponent(currentClientToken)}`;
     }
