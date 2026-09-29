@@ -536,9 +536,18 @@
 
       document.getElementById('renewBtn').style.display = "block";
       document.getElementById('leaveBtn').style.display = "block";
+
+      // ---> ADD THIS BLOCK BELOW <---
+      // Set a background 10-minute grace period timestamp if not already set
+      const expiryGraceKey = 'expired_grace_until_' + rawTable + '_' + sessionId;
+      if (!localStorage.getItem(expiryGraceKey)) {
+        const tenMinutesInMs = 10 * 60 * 1000;
+        localStorage.setItem(expiryGraceKey, Date.now() + tenMinutesInMs);
+      }
+      // -------------------------------
     }
 
-       // ==========================================
+      // ==========================================
 // SECTION 3E: MAIN APP INITIALIZATION & LIVE COUNTDOWN LOOP
 // ==========================================
 const urlParams = new URLSearchParams(window.location.search);
@@ -550,6 +559,31 @@ const clientToken = urlParams.get('client_token') || urlParams.get('t') || urlPa
 const sessionId = clientToken || 'latest';
 
 try {
+  // Check if a 10-minute expiration grace period was active and has now passed in the background
+  const expiryGraceKey = 'expired_grace_until_' + rawTable + '_' + sessionId;
+  const graceUntil = localStorage.getItem(expiryGraceKey);
+  if (graceUntil && Date.now() > parseInt(graceUntil, 10)) {
+    // Automatically trigger session end data cleanup behind the scenes
+    const tableNum = rawTable;
+    localStorage.setItem('session_ended_' + tableNum + '_' + sessionId, 'true');
+    localStorage.removeItem('session_start_table_' + tableNum + '_' + sessionId);
+    localStorage.setItem('force_clear_table_' + tableNum, Date.now());
+    localStorage.removeItem('activeTable');
+    localStorage.removeItem('sessionExpiry');
+    localStorage.removeItem('renewal_count_' + rawTable);
+    localStorage.removeItem(expiryGraceKey);
+
+    // Ping the server to clear the table
+    try {
+      const beaconUrl = `${SCRIPT_URL}?action=clear&table=${encodeURIComponent(tableNum)}&client_token=${encodeURIComponent(sessionId)}`;
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(beaconUrl);
+      } else {
+        fetch(beaconUrl, { method: 'GET', mode: 'no-cors', keepalive: true });
+      }
+    } catch (e) {}
+  }
+
   const endedKey = 'session_ended_' + rawTable + '_' + sessionId;
   if (localStorage.getItem(endedKey) === 'true') {
     document.getElementById('appCard').innerHTML = `
