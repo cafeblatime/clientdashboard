@@ -509,45 +509,41 @@
     }
 
     // 3D. Expired Session Interface Renderer
-    function renderExpiredUI() {
-      const notifyBtn = document.getElementById('notifyBtn');
-      const statusText = document.getElementById('statusText');
-      const bufferSection = document.getElementById('bufferSection');
+function renderExpiredUI() {
+  const notifyBtn = document.getElementById('notifyBtn');
+  const statusText = document.getElementById('statusText');
+  const bufferSection = document.getElementById('bufferSection');
 
-      if (notifyBtn) notifyBtn.style.display = 'none';
-      if (statusText) statusText.style.display = 'none';
-      if (bufferSection) bufferSection.style.display = 'none';
+  if (notifyBtn) notifyBtn.style.display = 'none';
+  if (statusText) statusText.style.display = 'none';
+  if (bufferSection) bufferSection.style.display = 'none';
 
-      const appCard = document.getElementById('appCard');
-      const timersContainer = document.getElementById('timersContainer');
-      if (appCard) appCard.classList.add('tint-expired-mode');
-      if (timersContainer) timersContainer.classList.add('expired-mode');
+  const appCard = document.getElementById('appCard');
+  const timersContainer = document.getElementById('timersContainer');
+  if (appCard) appCard.classList.add('tint-expired-mode');
+  if (timersContainer) timersContainer.classList.add('expired-mode');
 
-      const mainTimerEl = document.getElementById('mainTimer');
-      const bufferTimerEl = document.getElementById('bufferTimer');
-      if (mainTimerEl) {
-        mainTimerEl.innerText = "00:00";
-        mainTimerEl.classList.remove('warning');
-        mainTimerEl.classList.add('expired');
-      }
-      if (bufferTimerEl) {
-        bufferTimerEl.innerText = "00:00";
-      }
+  const mainTimerEl = document.getElementById('mainTimer');
+  const bufferTimerEl = document.getElementById('bufferTimer');
+  if (mainTimerEl) {
+    mainTimerEl.innerText = "00:00";
+    mainTimerEl.classList.remove('warning');
+    mainTimerEl.classList.add('expired');
+  }
+  if (bufferTimerEl) {
+    bufferTimerEl.innerText = "00:00";
+  }
 
-      document.getElementById('renewBtn').style.display = "block";
-      document.getElementById('leaveBtn').style.display = "block";
+  document.getElementById('renewBtn').style.display = "block";
+  document.getElementById('leaveBtn').style.display = "block";
 
-      // ---> ADD THIS BLOCK BELOW <---
-      // Set a background 10-minute grace period timestamp if not already set
-      const expiryGraceKey = 'expired_grace_until_' + rawTable + '_' + sessionId;
-      if (!localStorage.getItem(expiryGraceKey)) {
-        const tenMinutesInMs = 10 * 60 * 1000;
-        localStorage.setItem(expiryGraceKey, Date.now() + tenMinutesInMs);
-      }
-      // -------------------------------
-    }
-
-      // ==========================================
+  const expiryGraceKey = 'expired_grace_until_' + rawTable + '_' + sessionId;
+  if (!localStorage.getItem(expiryGraceKey)) {
+    const tenMinutesInMs = 10 * 60 * 1000;
+    localStorage.setItem(expiryGraceKey, Date.now() + tenMinutesInMs);
+  }
+}
+   // ==========================================
 // SECTION 3E: MAIN APP INITIALIZATION & LIVE COUNTDOWN LOOP
 // ==========================================
 const urlParams = new URLSearchParams(window.location.search);
@@ -559,13 +555,15 @@ const clientToken = urlParams.get('client_token') || urlParams.get('t') || urlPa
 const sessionId = clientToken || 'latest';
 
 try {
-  // Check if a 10-minute expiration grace period was active and has now passed in the background
+  // Check if a 10-minute expiration grace period was active and has now passed
   const expiryGraceKey = 'expired_grace_until_' + rawTable + '_' + sessionId;
   const graceUntil = localStorage.getItem(expiryGraceKey);
   if (graceUntil && Date.now() > parseInt(graceUntil, 10)) {
     // Automatically trigger session end data cleanup behind the scenes
     const tableNum = rawTable;
+    let renewalCount = localStorage.getItem('renewal_count_' + tableNum) || '0';
     localStorage.setItem('session_ended_' + tableNum + '_' + sessionId, 'true');
+    localStorage.removeItem('session_start_table_' + tableNum + '_' + sessionId + '_r' + renewalCount);
     localStorage.removeItem('session_start_table_' + tableNum + '_' + sessionId);
     localStorage.setItem('force_clear_table_' + tableNum, Date.now());
     localStorage.removeItem('activeTable');
@@ -622,16 +620,22 @@ try {
     })
     .catch(err => console.error("User validation error:", err));
 
-  // Include the current renewal count so each renewal gets its own unique storage slot
+  // Include current renewal count so each renewal gets its own unique storage slot
   let renewalCount = localStorage.getItem('renewal_count_' + rawTable) || '0';
   const storageKey = 'session_start_table_' + rawTable + '_' + sessionId + '_r' + renewalCount;
-  let startTime = localStorage.getItem(storageKey);
-
+  
   const BUFFER_DURATION_MS = 0 * 60 * 1000;
   const MAIN_DURATION_MS = 8 * 60 * 1000;
   const TOTAL_DURATION_MS = BUFFER_DURATION_MS + MAIN_DURATION_MS;
 
-  if (!startTime) {
+  // Persistent Timer Fix: Retrieve existing start time or calculate from sessionExpiry
+  let startTime = localStorage.getItem(storageKey);
+  const existingExpiry = localStorage.getItem('sessionExpiry');
+
+  if (!startTime && existingExpiry && localStorage.getItem('activeTable') === rawTable) {
+    startTime = parseInt(existingExpiry, 10) - TOTAL_DURATION_MS;
+    localStorage.setItem(storageKey, startTime);
+  } else if (!startTime) {
     startTime = Date.now();
     localStorage.setItem(storageKey, startTime);
   } else {
@@ -678,7 +682,7 @@ try {
   const bufferSection = document.getElementById('bufferSection');
   const mainTimerSection = document.getElementById('mainTimerSection');
   let alertPlayed = false;
-  let expiredPlayed = false;
+  let expiredPlayed = false;   
 
   timerInterval = setInterval(() => {
     const elapsedMs = Date.now() - startTime;
